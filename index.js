@@ -8,7 +8,7 @@ const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, updateDoc, setDoc } = require('firebase/firestore');
 
 const app = express();
-const PORT = 3000;
+const PORT = 3000 || process.env.PORT;
 console.clear();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
