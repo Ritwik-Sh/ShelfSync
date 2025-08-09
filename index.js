@@ -1,4 +1,127 @@
-const express = require('express');
+// Simple but effective scraping approach
+async function getPlaceDetailsSimple(url) {
+    if (storeCache.has(url)) {
+        return storeCache.get(url);
+    }
+
+    let browser;
+    try {
+        console.log('🚀 Launching simple stealth browser...');
+        
+        browser = await puppeteer.launch({
+            headless: 'new',
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--no-first-run',
+                '--disable-gpu',
+                '--single-process',
+                '--no-zygote'
+            ],
+            ignoreDefaultArgs: ['--enable-automation']
+        });
+
+        const page = await browser.newPage();
+        
+        // Basic stealth
+        await page.evaluateOnNewDocument(() => {
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        });
+
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+        console.log(`📍 Navigating to: ${url}`);
+        
+        // Simple navigation
+        await page.goto(url, { 
+            waitUntil: 'domcontentloaded', 
+            timeout: 20000 
+        });
+
+        // Wait for content
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        // Simple extraction
+        const data = await page.evaluate(() => {
+            // Try to find store name
+            let name = document.querySelector('h1')?.innerText?.trim() || 
+                      document.querySelector('.qrShPb')?.innerText?.trim() ||
+                      "Store Name Not Available";
+
+            // Clean up name
+            if (name.includes('Google Maps')) {
+                name = "Store Name Not Available";
+            }
+
+            // Try to find address
+            let address = document.querySelector('[data-item-id="address"]')?.innerText?.trim() ||
+                         document.querySelector('.Io6YTe')?.innerText?.trim() ||
+                         "Address not available";
+
+            // Try to find rating
+            let rating = "N/A";
+            const ratingEl = document.querySelector('.F7nice span') || 
+                           document.querySelector('.yi40Hd');
+            if (ratingEl) {
+                const ratingMatch = ratingEl.innerText.match(/\d+\.?\d*/);
+                if (ratingMatch) rating = ratingMatch[0];
+            }
+
+            return { name, address, rating };
+        });
+
+        console.log('✅ Simple extraction result:', data);
+        storeCache.set(url, data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Simple scraping failed:', error.message);
+        throw error;
+    } finally {
+        if (browser) {
+            try {
+                await browser.close();
+            } catch (e) {
+                console.error('Error closing browser:', e.message);
+            }
+        }
+    }
+}
+
+// Enhanced stealth scraping with better anti-detection
+async function getPlaceDetails(url) {
+    // Check cache first
+    if (storeCache.has(url)) {
+        console.log('Using cached data for:', url);
+        return storeCache.get(url);
+    }
+
+    // Try simple approach first (fastest)
+    try {
+        const result = await getPlaceDetailsSimple(url);
+        if (result.name !== "Store Name Not Available") {
+            return result;
+        }
+    } catch (error) {
+        console.log('Simple approach failed, trying ultra stealth...');
+    }
+
+    // Try ultra stealth if simple fails
+    try {
+        const result = await getPlaceDetailsUltraStealth(url);
+        if (result.name !== "Store Name Not Available") {
+            return result;
+        }
+    } catch (error) {
+        console.log('Ultra stealth failed, trying alternative approach...');
+    }
+
+    // Finally try the alternative approach
+    return await getPlaceDetailsAlternative(url);
+}const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
 require('dotenv').config();
@@ -1385,5 +1508,22 @@ app.post('/processPurchase', async (req, res) => {
     } catch (error) {
         console.error('Error processing purchase:', error);
         res.status(500).send(`Internal Server Error: ${error.message}`);
+    }
+});
+
+// DEBUG ENDPOINT: Get raw purchases file content
+app.get('/debugPurchases', async (req, res) => {
+    try {
+        const data = await fs.readFile('./db/purchases.txt', 'utf8');
+        const lines = data.split('\n');
+
+        res.json({
+            totalLines: lines.length,
+            header: lines[0],
+            sampleLines: lines.slice(1, 6), // First 5 data lines
+            allLines: lines // Include all lines for complete debugging
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
