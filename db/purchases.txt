@@ -1,2 +1,3 @@
 2025-08-09T08:49:55.040Z|Ritwik|SunElectronics|Mayukh|1|10|10|N/A|Unknown Store|TXN_1754729395039_jdi9sx354
 2025-08-09T09:10:12.856Z|Ritwik|SunElectronics|Vanish|1|1|1|N/A|Unknown Store|TXN_1754730612852_gylwtzmbz
+2025-08-09T18:54:21.926Z|Ritwik|SunElectronics|Jumper Pins (Gay) (30 in 1)|78|120|9360|N/A|Unknown Store|TXN_1754765661924_57nwkdon8

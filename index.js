@@ -2,7 +2,20 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
 require('dotenv').config();
-const puppeteer = require('puppeteer');
+
+// Try to import Playwright, but handle gracefully if not installed
+let chromium = null;
+let playwrightAvailable = false;
+
+try {
+    const playwright = require('playwright');
+    chromium = playwright.chromium;
+    playwrightAvailable = true;
+    console.log('✅ Playwright loaded successfully');
+} catch (error) {
+    console.warn('⚠️ Playwright not available:', error.message);
+    console.warn('📝 Run "npx playwright install" to enable web scraping');
+}
 
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, updateDoc, setDoc } = require('firebase/firestore');
@@ -40,6 +53,7 @@ async function initializePurchasesFile() {
         await fs.access('./db/purchases.txt');
     } catch (error) {
         const header = 'TIMESTAMP|CUSTOMER_USERNAME|STORE_USERNAME|ITEM_NAME|QUANTITY|UNIT_PRICE|TOTAL_AMOUNT|CUSTOMER_EMAIL|STORE_NAME|TRANSACTION_ID\n';
+        await fs.mkdir('./db', { recursive: true }).catch(() => {});
         await fs.writeFile('./db/purchases.txt', header);
         console.log('Created purchases.txt file');
     }
@@ -47,324 +61,50 @@ async function initializePurchasesFile() {
 
 initializePurchasesFile().catch(console.error);
 
-// Enhanced stealth scraping with better anti-detection
-async function getPlaceDetails(url) {
+// Extract store name from Google Maps URL as fallback
+function extractStoreNameFromUrl(url) {
+    try {
+        // Extract from place name in URL
+        const placeMatch = url.match(/place\/([^/@]+)/);
+        if (placeMatch) {
+            return decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+        }
+        
+        // Fallback to domain extraction
+        const urlObj = new URL(url);
+        return urlObj.hostname.replace('www.', '');
+    } catch (error) {
+        return 'Unknown Store';
+    }
+}
+
+// Improved scraping function with better error handling
+async function getPlaceDetailsImproved(url) {
     // Check cache first
     if (storeCache.has(url)) {
-        console.log('Using cached data for:', url);
+        console.log('📦 Using cached data for:', url);
         return storeCache.get(url);
     }
 
-    // Try the most aggressive stealth approach first
-    try {
-        const result = await getPlaceDetailsUltraStealth(url);
-        if (result.name !== "Store Name Not Available") {
-            return result;
-        }
-    } catch (error) {
-        console.log('Ultra stealth failed, trying alternative approach...');
+    // If Playwright is not available, use URL fallback immediately
+    if (!playwrightAvailable) {
+        console.log('⚡ Using URL fallback (Playwright not available)');
+        const fallbackData = {
+            name: extractStoreNameFromUrl(url),
+            address: "Address not available (Playwright not installed)",
+            rating: "N/A"
+        };
+        storeCache.set(url, fallbackData);
+        return fallbackData;
     }
 
-    return await getPlaceDetailsAlternative(url);
-}
-
-// Ultra stealth function with maximum evasion
-async function getPlaceDetailsUltraStealth(url) {
-    let browser;
+    let browser = null;
     try {
-        console.log('🥷 Launching ultra-stealth browser...');
+        console.log('🚀 Attempting to scrape:', url);
         
-        browser = await puppeteer.launch({
-            headless: 'new',
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox', 
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding',
-                '--disable-features=TranslateUI,BlinkGenPropertyTrees,VizDisplayCompositor',
-                '--disable-blink-features=AutomationControlled',
-                '--disable-extensions',
-                '--disable-plugins',
-                '--disable-default-apps',
-                '--disable-component-extensions-with-background-pages',
-                '--disable-client-side-phishing-detection',
-                '--disable-sync',
-                '--disable-background-networking',
-                '--disable-software-rasterizer',
-                '--mute-audio',
-                '--no-default-browser-check',
-                '--autoplay-policy=user-gesture-required',
-                '--disable-features=AudioServiceOutOfProcess',
-                '--window-size=1366,768',
-                '--user-data-dir=/tmp/chrome-user-data-' + Math.random().toString(36).substring(7)
-            ],
-            ignoreDefaultArgs: ['--enable-automation', '--enable-blink-features=IdleDetection'],
-            defaultViewport: { width: 1366, height: 768 }
-        });
-
-        const page = await browser.newPage();
-
-        // Ultra-stealth page setup
-        await page.evaluateOnNewDocument(() => {
-            // Completely remove automation traces
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            Object.defineProperty(navigator, 'plugins', { get: () => Array.from({ length: 4 }, (_, i) => ({})) });
-            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-            Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
-            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-            Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-            
-            // Mock Chrome runtime
-            if (!window.chrome) {
-                window.chrome = {};
-            }
-            window.chrome.runtime = {
-                onConnect: undefined,
-                onMessage: undefined
-            };
-
-            // Remove automation flags
-            delete navigator.__proto__.webdriver;
-            
-            // Mock permissions API
-            const originalQuery = window.navigator.permissions?.query;
-            if (originalQuery) {
-                window.navigator.permissions.query = (params) => {
-                    if (params.name === 'notifications') {
-                        return Promise.resolve({ state: 'default' });
-                    }
-                    return originalQuery(params);
-                };
-            }
-        });
-
-        // Set ultra-realistic user agent and headers
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        
-        await page.setExtraHTTPHeaders({
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Cache-Control': 'no-cache',
-            'DNT': '1',
-            'Pragma': 'no-cache',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Upgrade-Insecure-Requests': '1'
-        });
-
-        // Simulate human behavior with mouse movements
-        await page.evaluateOnNewDocument(() => {
-            // Add random mouse movements
-            let mouseX = Math.random() * window.innerWidth;
-            let mouseY = Math.random() * window.innerHeight;
-            
-            const moveInterval = setInterval(() => {
-                mouseX += (Math.random() - 0.5) * 50;
-                mouseY += (Math.random() - 0.5) * 50;
-                
-                mouseX = Math.max(0, Math.min(window.innerWidth, mouseX));
-                mouseY = Math.max(0, Math.min(window.innerHeight, mouseY));
-                
-                document.dispatchEvent(new MouseEvent('mousemove', {
-                    clientX: mouseX,
-                    clientY: mouseY
-                }));
-            }, 1000 + Math.random() * 2000);
-
-            // Clear interval after 10 seconds
-            setTimeout(() => clearInterval(moveInterval), 10000);
-        });
-
-        console.log(`🌐 Navigating to: ${url}`);
-        
-        // Navigate with human-like delay
-        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
-        
-        const response = await page.goto(url, { 
-            waitUntil: 'networkidle0', 
-            timeout: 25000 
-        });
-
-        if (!response || !response.ok()) {
-            throw new Error(`Navigation failed with status: ${response?.status()}`);
-        }
-
-        console.log('✅ Page loaded successfully');
-
-        // Wait for content with human-like pauses
-        await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
-
-        // Multiple attempts to find elements
-        let elementFound = false;
-        const attempts = 3;
-        
-        for (let i = 0; i < attempts; i++) {
-            try {
-                await page.waitForSelector('h1, [data-item-id], .DUwDvf, .qrShPb', { 
-                    timeout: 3000,
-                    visible: true 
-                });
-                elementFound = true;
-                console.log(`✅ Elements found on attempt ${i + 1}`);
-                break;
-            } catch (e) {
-                console.log(`⏳ Attempt ${i + 1} failed, waiting...`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-        }
-
-        if (!elementFound) {
-            console.log('⚠️ No specific elements found, proceeding with extraction...');
-        }
-
-        // Enhanced data extraction with debugging
-        const data = await page.evaluate(() => {
-            console.log('🔍 Starting enhanced data extraction...');
-            
-            // Debug: Log page title and URL
-            console.log('Page title:', document.title);
-            console.log('Current URL:', window.location.href);
-            
-            // Get page content for debugging
-            const bodyText = document.body?.innerText?.substring(0, 500) || 'No body text';
-            console.log('Body preview:', bodyText);
-
-            // Enhanced name extraction with more selectors
-            const nameSelectors = [
-                'h1.DUwDvf',
-                'h1[data-attrid="title"]',
-                '.x3AX1-LfntMc-header-title-title',
-                'h1.qrShPb',
-                '[data-attrid="title"] h1',
-                'h1.SPZz6b',
-                'h1',
-                '.qrShPb span',
-                '[data-value="title"]',
-                '.fontHeadlineSmall',
-                '.fontHeadlineLarge'
-            ];
-
-            let name = null;
-            for (const selector of nameSelectors) {
-                const elements = document.querySelectorAll(selector);
-                for (const el of elements) {
-                    if (el?.innerText?.trim() && 
-                        !el.innerText.includes('Google Maps') && 
-                        !el.innerText.includes('Search') &&
-                        el.innerText.length > 2) {
-                        name = el.innerText.trim();
-                        console.log(`📍 Found name with ${selector}:`, name);
-                        break;
-                    }
-                }
-                if (name) break;
-            }
-
-            // Enhanced address extraction
-            const addressSelectors = [
-                'button[data-item-id="address"] div.Io6YTe',
-                'button[data-item-id="address"] .Io6YTe',
-                '[data-item-id="address"] .fontBodyMedium',
-                '[data-item-id="address"]',
-                '.Io6YTe',
-                '[data-attrid*="address"] .LrzXr',
-                '.LrzXr',
-                '.rogA2c .fontBodyMedium',
-                '[data-value="address"]',
-                '.CsEnBe',
-                '.fontBodyMedium'
-            ];
-
-            let address = null;
-            for (const selector of addressSelectors) {
-                const el = document.querySelector(selector);
-                if (el?.innerText?.trim() && el.innerText.length > 5) {
-                    address = el.innerText.trim();
-                    console.log(`📍 Found address with ${selector}:`, address);
-                    break;
-                }
-            }
-
-            // Enhanced rating extraction
-            const ratingSelectors = [
-                'div.F7nice span[aria-hidden="true"]',
-                '.F7nice span',
-                'span.yi40Hd.YrbPuc',
-                '.MW4etd',
-                '[data-attrid*="rating"] span',
-                '.Aq14fc .yi40Hd',
-                '.jANrlb .fontDisplayLarge',
-                '.ceNzKf'
-            ];
-
-            let rating = null;
-            for (const selector of ratingSelectors) {
-                const el = document.querySelector(selector);
-                if (el?.innerText?.trim()) {
-                    const ratingText = el.innerText.trim();
-                    const ratingMatch = ratingText.match(/^\d+\.?\d*$/);
-                    if (ratingMatch && parseFloat(ratingMatch[0]) <= 5) {
-                        rating = ratingMatch[0];
-                        console.log(`⭐ Found rating with ${selector}:`, rating);
-                        break;
-                    }
-                }
-            }
-
-            const result = {
-                name: name || "Store Name Not Available",
-                address: address || "Address not available", 
-                rating: rating || "N/A"
-            };
-
-            console.log('🎯 Final extraction result:', result);
-            return result;
-        });
-
-        console.log('🎉 Successfully extracted data:', data);
-        
-        // Cache and return
-        storeCache.set(url, data);
-        await browser.close();
-        return data;
-
-    } catch (error) {
-        console.error(`❌ Ultra stealth failed:`, error.message);
-        throw error;
-    } finally {
-        if (browser) {
-            try {
-                await browser.close();
-            } catch (e) {
-                console.error('Error closing browser:', e.message);
-            }
-        }
-    }
-}
-
-// Alternative scraping function using a different approach
-async function getPlaceDetailsAlternative(url) {
-    if (storeCache.has(url)) {
-        return storeCache.get(url);
-    }
-
-    let browser;
-    try {
-        console.log('Launching browser with maximum stealth...');
-        
-        browser = await puppeteer.launch({
-            headless: 'new',
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+        // Launch browser with optimized settings
+        browser = await chromium.launch({
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -376,266 +116,198 @@ async function getPlaceDetailsAlternative(url) {
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
                 '--disable-renderer-backgrounding',
-                '--disable-features=TranslateUI,BlinkGenPropertyTrees',
                 '--disable-blink-features=AutomationControlled',
-                '--no-default-browser-check',
-                '--disable-hang-monitor',
-                '--disable-prompt-on-repost',
-                '--disable-sync',
-                '--disable-translate',
-                '--disable-web-security',
-                '--allow-running-insecure-content',
-                '--disable-component-extensions-with-background-pages',
-                '--use-gl=swiftshader',
-                '--window-size=1920,1080'
+                '--disable-extensions',
+                '--disable-plugins',
+                '--window-size=1366,768'
             ],
-            ignoreDefaultArgs: ['--enable-automation', '--enable-blink-features=IdleDetection'],
-            defaultViewport: null
+            ignoreDefaultArgs: ['--enable-automation'],
+            timeout: 15000 // 15 second browser launch timeout
         });
 
-        const page = await browser.newPage();
+        const context = await browser.newContext({
+            viewport: { width: 1366, height: 768 },
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            extraHTTPHeaders: {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+            }
+        });
 
-        // Maximum stealth setup
-        await page.evaluateOnNewDocument(() => {
-            // Remove webdriver traces
-            delete Object.getPrototypeOf(navigator).webdriver;
+        const page = await context.newPage();
+
+        // Add stealth scripts
+        await page.addInitScript(() => {
+            // Remove webdriver property
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
             
-            // Mock chrome object
-            window.chrome = {
-                runtime: {},
-                loadTimes: function() {},
-                csi: function() {},
-                app: {}
-            };
-
-            // Mock permissions
-            const originalQuery = window.navigator.permissions.query;
-            window.navigator.permissions.query = (parameters) => (
-                parameters.name === 'notifications' ?
-                    Promise.resolve({ state: Notification.permission }) :
-                    originalQuery(parameters)
-            );
-
-            // Override the `plugins` property to use a custom getter
+            // Add chrome object
+            if (!window.chrome) {
+                window.chrome = { runtime: {} };
+            }
+            
+            // Override plugins
             Object.defineProperty(navigator, 'plugins', {
-                get: function() {
-                    return [
-                        {
-                            0: {
-                                type: "application/x-google-chrome-pdf",
-                                suffixes: "pdf",
-                                description: "Portable Document Format",
-                                enabledPlugin: Plugin
-                            },
-                            description: "Portable Document Format",
-                            filename: "internal-pdf-viewer",
-                            length: 1,
-                            name: "Chrome PDF Plugin"
-                        }
-                    ];
-                }
-            });
-
-            // Override the `mimeTypes` property
-            Object.defineProperty(navigator, 'mimeTypes', {
-                get: function() {
-                    return [
-                        {
-                            type: "application/pdf",
-                            suffixes: "pdf",
-                            description: "",
-                            enabledPlugin: {
-                                description: "Portable Document Format",
-                                filename: "internal-pdf-viewer",
-                                length: 1,
-                                name: "Chrome PDF Plugin"
-                            }
-                        }
-                    ];
-                }
+                get: () => Array.from({ length: 4 }, () => ({}))
             });
         });
 
-        // Set more realistic headers
-        await page.setExtraHTTPHeaders({
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Cache-Control': 'max-age=0',
-            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            'Sec-Ch-Ua-Mobile': '?0',
-            'Sec-Ch-Ua-Platform': '"Windows"',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        console.log('🌐 Navigating to page...');
+        
+        // Navigate with shorter timeout
+        const response = await page.goto(url, {
+            waitUntil: 'domcontentloaded', // Changed from networkidle
+            timeout: 15000 // Reduced timeout
         });
 
-        // Random delay before navigation
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
-
-        // Navigate to the page
-        const response = await page.goto(url, { 
-            waitUntil: 'networkidle2', 
-            timeout: 30000 
-        });
-
-        if (!response) {
-            throw new Error('Failed to load page');
+        if (!response || !response.ok()) {
+            throw new Error(`Navigation failed: ${response?.status()}`);
         }
 
-        console.log('Page loaded, status:', response.status());
-
-        // Wait for dynamic content
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        // Try to wait for specific elements
+        console.log('⏳ Waiting for content...');
+        
+        // Wait for elements with timeout
         try {
-            await Promise.race([
-                page.waitForSelector('h1.DUwDvf', { timeout: 5000 }),
-                page.waitForSelector('h1', { timeout: 5000 }),
-                page.waitForSelector('.qrShPb', { timeout: 5000 })
-            ]);
+            await page.waitForSelector('h1, [data-item-id], .DUwDvf', { 
+                timeout: 8000,
+                state: 'visible'
+            });
+            console.log('✅ Page elements found');
         } catch (selectorError) {
-            console.log('Selectors not found, proceeding anyway...');
+            console.log('⚠️ Specific selectors not found, proceeding with extraction...');
         }
 
-        // Enhanced data extraction
+        // Extract data with comprehensive selectors
         const data = await page.evaluate(() => {
-            console.log('Starting data extraction...');
-            
-            // Get all possible elements for debugging
-            const allH1 = Array.from(document.querySelectorAll('h1')).map(el => el.innerText);
-            const allWithAddress = Array.from(document.querySelectorAll('[data-item-id*="address"]')).map(el => el.innerText);
-            
-            console.log('Found H1 elements:', allH1);
-            console.log('Found address elements:', allWithAddress);
-
-            // Try multiple selectors for name
+            // Enhanced name extraction
             const nameSelectors = [
                 'h1.DUwDvf',
-                'h1[data-attrid="title"]', 
-                '.x3AX1-LfntMc-header-title-title',
+                'h1[data-attrid="title"]',
                 'h1.qrShPb',
-                '[data-attrid="title"] h1',
+                'h1.SPZz6b',
                 'h1',
-                '.SPZz6b h1',
-                '.qrShPb span'
+                '.fontHeadlineLarge',
+                '.fontHeadlineSmall'
             ];
 
             let name = null;
             for (const selector of nameSelectors) {
-                const el = document.querySelector(selector);
-                if (el && el.innerText && el.innerText.trim() && !el.innerText.includes('Google Maps')) {
-                    name = el.innerText.trim();
-                    console.log(`Found name with selector ${selector}:`, name);
-                    break;
+                const elements = document.querySelectorAll(selector);
+                for (const el of elements) {
+                    const text = el?.innerText?.trim();
+                    if (text && 
+                        text.length > 2 && 
+                        !text.includes('Google Maps') && 
+                        !text.includes('Search')) {
+                        name = text;
+                        break;
+                    }
                 }
+                if (name) break;
             }
 
-            // Try multiple selectors for address
+            // Enhanced address extraction
             const addressSelectors = [
                 'button[data-item-id="address"] div.Io6YTe',
                 'button[data-item-id="address"] .Io6YTe',
                 '[data-item-id="address"] .fontBodyMedium',
                 '.Io6YTe',
-                '[data-attrid*="address"] .LrzXr',
                 '.LrzXr',
                 '.rogA2c .fontBodyMedium',
-                '[data-value="address"]'
+                '.CsEnBe',
+                '.fontBodyMedium'
             ];
 
             let address = null;
             for (const selector of addressSelectors) {
                 const el = document.querySelector(selector);
-                if (el && el.innerText && el.innerText.trim()) {
-                    address = el.innerText.trim();
-                    console.log(`Found address with selector ${selector}:`, address);
+                const text = el?.innerText?.trim();
+                if (text && text.length > 5) {
+                    address = text;
                     break;
                 }
             }
 
-            // Try multiple selectors for rating
+            // Enhanced rating extraction
             const ratingSelectors = [
                 'div.F7nice span[aria-hidden="true"]',
                 '.F7nice span',
                 'span.yi40Hd.YrbPuc',
                 '.MW4etd',
-                '[data-attrid*="rating"] span',
                 '.Aq14fc .yi40Hd',
-                '.jANrlb .fontDisplayLarge'
+                '.jANrlb .fontDisplayLarge',
+                '.ceNzKf'
             ];
 
             let rating = null;
             for (const selector of ratingSelectors) {
                 const el = document.querySelector(selector);
-                if (el && el.innerText && el.innerText.trim()) {
-                    const ratingText = el.innerText.trim();
-                    const ratingMatch = ratingText.match(/^\d+\.?\d*$/);
-                    if (ratingMatch) {
+                const text = el?.innerText?.trim();
+                if (text) {
+                    const ratingMatch = text.match(/^\d+\.?\d*$/);
+                    if (ratingMatch && parseFloat(ratingMatch[0]) <= 5) {
                         rating = ratingMatch[0];
-                        console.log(`Found rating with selector ${selector}:`, rating);
                         break;
                     }
                 }
             }
 
-            const result = {
-                name: name || "Store Name Not Available",
-                address: address || "Address not available", 
-                rating: rating || "N/A"
+            return {
+                name: name || null,
+                address: address || null,
+                rating: rating || null
             };
-
-            console.log('Final extracted data:', result);
-            return result;
         });
 
-        console.log('Successfully extracted data:', data);
-        
-        // Cache the result
-        storeCache.set(url, data);
-        return data;
+        await browser.close();
+        browser = null;
+
+        // Prepare final result
+        const result = {
+            name: data.name || extractStoreNameFromUrl(url),
+            address: data.address || "Address not available",
+            rating: data.rating || "N/A"
+        };
+
+        console.log('🎉 Successfully scraped:', result.name);
+        storeCache.set(url, result);
+        return result;
 
     } catch (error) {
-        console.error(`Error in alternative scraping:`, error.message);
+        console.log(`❌ Scraping failed: ${error.message}`);
         
-        // Final fallback - extract from URL
-        try {
-            const placeMatch = url.match(/place\/([^/@]+)/);
-            const nameFromUrl = placeMatch ? decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ') : 'Unknown Store';
-            
-            const fallbackData = {
-                name: nameFromUrl,
-                address: "Address not available",
-                rating: "N/A"
-            };
-            
-            console.log('Using URL fallback data:', fallbackData);
-            storeCache.set(url, fallbackData);
-            return fallbackData;
-        } catch (urlError) {
-            const errorData = {
-                name: "Store Name Not Available",
-                address: "Address not available", 
-                rating: "N/A"
-            };
-            storeCache.set(url, errorData);
-            return errorData;
-        }
+        // Use URL fallback
+        const fallbackData = {
+            name: extractStoreNameFromUrl(url),
+            address: "Address not available",
+            rating: "N/A"
+        };
+        
+        console.log('🔄 Using fallback data:', fallbackData.name);
+        storeCache.set(url, fallbackData);
+        return fallbackData;
+        
     } finally {
         if (browser) {
             try {
                 await browser.close();
-            } catch (e) {
-                console.error('Error closing browser:', e.message);
+            } catch (closeError) {
+                console.error('Error closing browser:', closeError.message);
             }
         }
     }
 }
 
-// Use the enhanced scraping function with fallback chain
+// Main function to get place details
+async function getPlaceDetails(url) {
+    return await getPlaceDetailsImproved(url);
+}
+
+// API endpoint for place details
 app.get('/getPlaceDetails', async (req, res) => {
     const { url } = req.query;
     if (!url) {
@@ -643,17 +315,126 @@ app.get('/getPlaceDetails', async (req, res) => {
     }
 
     try {
-        console.log('🎯 Getting place details for:', url);
         const placeDetails = await getPlaceDetails(url);
-        console.log('📊 Returning place details:', placeDetails);
         res.json(placeDetails);
     } catch (error) {
-        console.error('❌ Error fetching place details:', error);
+        console.error('Error in getPlaceDetails endpoint:', error);
         res.status(500).json({ 
             error: 'Internal Server Error',
             details: error.message 
         });
     }
+});
+
+// Enhanced store loading with better performance
+app.get('/getStores', async (req, res) => {
+    try {
+        const storeRef = collection(db, 'sfhs-code', 'accounts', 'stores');
+        const snapshot = await getDocs(storeRef);
+
+        if (snapshot.empty) {
+            return res.json([]);
+        }
+
+        const stores = [];
+        console.log(`📊 Processing ${snapshot.docs.length} stores...`);
+
+        // Process stores with limited concurrency to avoid overwhelming
+        const processStore = async (docSnap) => {
+            const storeData = docSnap.data();
+            console.log(`\n🏪 Processing: ${storeData.username}`);
+            
+            if (storeData.url) {
+                try {
+                    const details = await getPlaceDetails(storeData.url);
+                    
+                    return {
+                        id: docSnap.id,
+                        username: storeData.username,
+                        url: storeData.url,
+                        name: details.name,
+                        address: details.address,
+                        rating: details.rating
+                    };
+                    
+                } catch (error) {
+                    console.error(`❌ Error processing ${storeData.username}:`, error.message);
+                    
+                    return {
+                        id: docSnap.id,
+                        username: storeData.username,
+                        url: storeData.url,
+                        name: storeData.storeName || extractStoreNameFromUrl(storeData.url),
+                        address: 'Address not available',
+                        rating: 'N/A'
+                    };
+                }
+            } else {
+                return {
+                    id: docSnap.id,
+                    username: storeData.username,
+                    url: '',
+                    name: storeData.storeName || 'Unknown Store',
+                    address: 'No URL provided',
+                    rating: 'N/A'
+                };
+            }
+        };
+
+        // Process stores with controlled concurrency
+        const BATCH_SIZE = 3;
+        const docs = snapshot.docs;
+        
+        for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+            const batch = docs.slice(i, i + BATCH_SIZE);
+            const batchPromises = batch.map(processStore);
+            const batchResults = await Promise.all(batchPromises);
+            stores.push(...batchResults);
+            
+            // Add delay between batches
+            if (i + BATCH_SIZE < docs.length) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+
+        console.log(`\n📈 Summary: ${stores.length} stores processed, cache size: ${storeCache.size}`);
+        res.json(stores);
+
+    } catch (error) {
+        console.error('Error fetching stores:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        playwrightAvailable,
+        cacheSize: storeCache.size,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Clear cache endpoint
+app.post('/clearCache', (req, res) => {
+    const oldSize = storeCache.size;
+    storeCache.clear();
+    console.log(`🗑️ Cache cleared: ${oldSize} items removed`);
+    res.json({ message: 'Cache cleared successfully', previousSize: oldSize });
+});
+
+// Debug cache endpoint
+app.get('/debugCache', (req, res) => {
+    const cacheData = {};
+    for (const [key, value] of storeCache.entries()) {
+        cacheData[key] = value;
+    }
+    res.json({
+        cacheSize: storeCache.size,
+        playwrightAvailable,
+        cacheData
+    });
 });
 
 // LOGIN
@@ -719,9 +500,14 @@ app.post('/registerStore', async (req, res) => {
     if (!url) {
         return res.status(400).send('Missing URL');
     }
-    if (!storeName) {
-        const data = await getPlaceDetailsAlternative(url);
-        storeName = data.name;
+    
+    if (!storeName && url) {
+        try {
+            const data = await getPlaceDetails(url);
+            storeName = data.name;
+        } catch (error) {
+            storeName = extractStoreNameFromUrl(url);
+        }
     }
 
     try {
@@ -744,106 +530,6 @@ app.post('/registerStore', async (req, res) => {
         console.error('Error registering store:', error);
         res.status(500).send('Internal Server Error');
     }
-});
-
-// Enhanced store loading with better error handling
-app.get('/getStores', async (req, res) => {
-    try {
-        const storeRef = collection(db, 'sfhs-code', 'accounts', 'stores');
-        const snapshot = await getDocs(storeRef);
-
-        if (snapshot.empty) {
-            return res.json([]);
-        }
-
-        const stores = [];
-        let successCount = 0;
-        let failCount = 0;
-
-        console.log(`Processing ${snapshot.docs.length} stores...`);
-
-        // Process stores one at a time with better error handling
-        for (const docSnap of snapshot.docs) {
-            const storeData = docSnap.data();
-            console.log(`\n--- Processing store: ${storeData.username} ---`);
-            
-            if (storeData.url) {
-                try {
-                    const details = await getPlaceDetailsAlternative(storeData.url);
-                    
-                    stores.push({
-                        id: docSnap.id,
-                        username: storeData.username,
-                        url: storeData.url,
-                        name: details.name,
-                        address: details.address,
-                        rating: details.rating
-                    });
-                    
-                    successCount++;
-                    console.log(`✓ Success: ${storeData.username} -> ${details.name}`);
-                    
-                    // Delay between requests to be respectful
-                    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-                    
-                } catch (error) {
-                    console.error(`✗ Failed: ${storeData.username} - ${error.message}`);
-                    failCount++;
-                    
-                    // Use store name from registration if scraping fails
-                    stores.push({
-                        id: docSnap.id,
-                        username: storeData.username,
-                        url: storeData.url,
-                        name: storeData.storeName || 'Unknown Store',
-                        address: 'Address not available',
-                        rating: 'N/A'
-                    });
-                }
-            } else {
-                console.log(`⚠ No URL for store: ${storeData.username}`);
-                stores.push({
-                    id: docSnap.id,
-                    username: storeData.username,
-                    url: '',
-                    name: storeData.storeName || 'Unknown Store',
-                    address: 'No URL provided',
-                    rating: 'N/A'
-                });
-            }
-        }
-
-        console.log(`\n=== Summary ===`);
-        console.log(`Total stores: ${stores.length}`);
-        console.log(`Successful scrapes: ${successCount}`);
-        console.log(`Failed scrapes: ${failCount}`);
-        console.log(`Cache size: ${storeCache.size}`);
-
-        res.json(stores);
-
-    } catch (error) {
-        console.error('Error fetching stores:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
-// Clear cache endpoint for debugging
-app.post('/clearCache', (req, res) => {
-    storeCache.clear();
-    console.log('Cache cleared');
-    res.send('Cache cleared successfully');
-});
-
-// Debug endpoint to check cache
-app.get('/debugCache', (req, res) => {
-    const cacheData = {};
-    for (const [key, value] of storeCache.entries()) {
-        cacheData[key] = value;
-    }
-    res.json({
-        cacheSize: storeCache.size,
-        cacheData
-    });
 });
 
 // ===== STOCK MANAGEMENT ENDPOINTS =====
@@ -966,16 +652,13 @@ app.post('/removeStock', async (req, res) => {
     }
 });
 
+// ===== PURCHASE ENDPOINTS =====
 
-// ================Purchases===================
-// Fixed backend endpoints for purchase handling
-// Add these to replace the existing purchase endpoints in your server.js
-
-// NEW: Process cart purchase with multiple items
+// Process cart purchase with multiple items
 app.post('/processCartPurchase', async (req, res) => {
     const { customerUsername, storeUsername, items, customerEmail } = req.body;
 
-    console.log('Processing cart purchase:', { customerUsername, storeUsername, items: items?.length, customerEmail });
+    console.log('🛒 Processing cart purchase:', { customerUsername, storeUsername, items: items?.length, customerEmail });
 
     if (!customerUsername || !storeUsername || !items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).send('Missing required fields or empty cart');
@@ -989,23 +672,18 @@ app.post('/processCartPurchase', async (req, res) => {
         const storeData = storeSnapshot.docs[0]?.data();
         const storeName = storeData?.storeName || 'Unknown Store';
 
-        // Generate single transaction ID for the entire cart
+        // Generate transaction ID for the entire cart
         const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const timestamp = new Date().toISOString();
 
-        console.log('Cart purchase details:', {
-            transactionId,
-            timestamp,
-            storeName,
-            itemCount: items.length
-        });
+        console.log('🆔 Cart details:', { transactionId, storeName, itemCount: items.length });
 
-        // Validate and process each item
+        // Process each item
         const processedItems = [];
         let totalCartAmount = 0;
         const stockRef = collection(db, 'sfhs-code', 'stock', storeUsername);
 
-        // First, validate all items and check stock
+        // Validate all items first
         for (const item of items) {
             const { itemId, quantity, name, price } = item;
             
@@ -1013,7 +691,6 @@ app.post('/processCartPurchase', async (req, res) => {
                 throw new Error(`Invalid item data: ${JSON.stringify(item)}`);
             }
 
-            // Get current stock from Firebase
             const itemDoc = await getDocs(query(stockRef, where('__name__', '==', itemId)));
             
             if (itemDoc.empty) {
@@ -1023,17 +700,10 @@ app.post('/processCartPurchase', async (req, res) => {
             const itemData = itemDoc.docs[0].data();
             const requestedQuantity = parseInt(quantity);
 
-            console.log(`Validating item ${name}:`, {
-                requested: requestedQuantity,
-                available: itemData.quantity,
-                price: itemData.price
-            });
-
             if (itemData.quantity < requestedQuantity) {
                 throw new Error(`Insufficient stock for ${itemData.name}. Available: ${itemData.quantity}, Requested: ${requestedQuantity}`);
             }
 
-            // Calculate item total
             const unitPrice = parseFloat(itemData.price);
             const itemTotal = unitPrice * requestedQuantity;
             totalCartAmount += itemTotal;
@@ -1043,53 +713,42 @@ app.post('/processCartPurchase', async (req, res) => {
                 itemData,
                 requestedQuantity,
                 unitPrice,
-                itemTotal,
-                originalItem: item
+                itemTotal
             });
         }
 
-        console.log('All items validated. Total cart amount:', totalCartAmount);
+        console.log('✅ All items validated. Total: $' + totalCartAmount.toFixed(2));
 
-        // If validation successful, update stock and create purchase records
+        // Update stock and create purchase records
         const purchaseRecords = [];
 
         for (const processedItem of processedItems) {
             const { docRef, itemData, requestedQuantity, unitPrice, itemTotal } = processedItem;
 
-            // Update stock in Firebase
+            // Update stock
             const newQuantity = itemData.quantity - requestedQuantity;
             if (newQuantity <= 0) {
                 await deleteDoc(doc(db, 'sfhs-code', 'stock', storeUsername, docRef.id));
-                console.log(`Item ${itemData.name} removed from stock (quantity became 0)`);
+                console.log(`📦 Removed ${itemData.name} from stock (quantity became 0)`);
             } else {
                 await updateDoc(doc(db, 'sfhs-code', 'stock', storeUsername, docRef.id), {
                     quantity: newQuantity,
                     updatedDate: timestamp
                 });
-                console.log(`Stock updated for ${itemData.name}: ${itemData.quantity} -> ${newQuantity}`);
+                console.log(`📦 Updated ${itemData.name}: ${itemData.quantity} → ${newQuantity}`);
             }
 
-            // Create purchase record for this item
+            // Create purchase record
             const purchaseRecord = `${timestamp}|${customerUsername}|${storeUsername}|${itemData.name}|${requestedQuantity}|${unitPrice}|${itemTotal}|${customerEmail || 'N/A'}|${storeName}|${transactionId}\n`;
-            
             purchaseRecords.push(purchaseRecord);
         }
 
-        console.log(`Writing ${purchaseRecords.length} purchase records`);
-
-        // Ensure directory exists
-        try {
-            await fs.access('./db');
-        } catch (error) {
-            await fs.mkdir('./db', { recursive: true });
-        }
-
-        // Write all purchase records to file
+        // Write all purchase records
         for (const record of purchaseRecords) {
             await fs.appendFile('./db/purchases.txt', record);
         }
 
-        console.log('All purchase records written successfully');
+        console.log('📝 All purchase records written successfully');
 
         const response = {
             success: true,
@@ -1105,68 +764,36 @@ app.post('/processCartPurchase', async (req, res) => {
             }))
         };
 
-        console.log('Sending cart purchase response:', response);
         res.json(response);
 
     } catch (error) {
-        console.error('Error processing cart purchase:', error);
+        console.error('❌ Cart purchase error:', error);
         res.status(500).send(`Internal Server Error: ${error.message}`);
     }
 });
 
-// ENHANCED: Get store purchases with better cart grouping support
+// Get store purchases
 app.get('/getStorePurchases', async (req, res) => {
     const { storeUsername } = req.query;
     if (!storeUsername) {
         return res.status(400).send('Missing storeUsername parameter');
     }
 
-    console.log(`Loading purchases for store: ${storeUsername}`);
-
     try {
-        // Check if purchases.txt exists
-        try {
-            await fs.access('./db/purchases.txt');
-        } catch (error) {
-            console.log('purchases.txt does not exist, creating empty file');
-            const header = 'TIMESTAMP|CUSTOMER_USERNAME|STORE_USERNAME|ITEM_NAME|QUANTITY|UNIT_PRICE|TOTAL_AMOUNT|CUSTOMER_EMAIL|STORE_NAME|TRANSACTION_ID\n';
-            await fs.writeFile('./db/purchases.txt', header);
-            return res.json([]);
-        }
-
         const data = await fs.readFile('./db/purchases.txt', 'utf8');
-        console.log(`Raw file content (first 500 chars): ${data.substring(0, 500)}`);
-
         const lines = data.split('\n');
-        console.log(`Total lines in file: ${lines.length}`);
-
-        // Skip header line (first line) and filter empty lines
         const dataLines = lines.slice(1).filter(line => line.trim());
-        console.log(`Data lines after filtering: ${dataLines.length}`);
-
-        // Filter for the specific store and parse
         const storePurchases = [];
 
-        for (let i = 0; i < dataLines.length; i++) {
-            const line = dataLines[i].trim();
-            if (!line) continue;
-
-            console.log(`Processing line ${i + 1}: ${line}`);
-
+        for (const line of dataLines) {
             try {
                 const parts = line.split('|');
-                console.log(`Split into ${parts.length} parts:`, parts);
-
-                if (parts.length !== 10) {
-                    console.warn(`Line ${i + 1} has incorrect number of parts (${parts.length}), skipping`);
-                    continue;
-                }
+                if (parts.length !== 10) continue;
 
                 const [timestamp, customerUsername, storeUsernameFromFile, itemName, quantity, unitPrice, totalAmount, customerEmail, storeName, transactionId] = parts;
 
-                // Check if this purchase belongs to the requested store
                 if (storeUsernameFromFile === storeUsername) {
-                    const purchase = {
+                    storePurchases.push({
                         timestamp: timestamp.trim(),
                         customerUsername: customerUsername.trim(),
                         storeUsername: storeUsernameFromFile.trim(),
@@ -1177,89 +804,45 @@ app.get('/getStorePurchases', async (req, res) => {
                         customerEmail: customerEmail.trim(),
                         storeName: storeName.trim(),
                         transactionId: transactionId.trim()
-                    };
-
-                    console.log(`Adding purchase for ${storeUsername}:`, purchase);
-                    storePurchases.push(purchase);
+                    });
                 }
             } catch (parseError) {
-                console.error(`Error parsing line ${i + 1}:`, parseError);
-                console.error(`Line content: ${line}`);
+                console.error('Error parsing purchase line:', parseError);
             }
         }
 
-        // Sort by timestamp (most recent first) and limit to last 100
         const sortedPurchases = storePurchases
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             .slice(0, 100);
 
-        console.log(`Returning ${sortedPurchases.length} purchases for store ${storeUsername}`);
-        
-        // Group by transaction ID to identify cart orders
-        const transactionGroups = {};
-        sortedPurchases.forEach(purchase => {
-            const txnId = purchase.transactionId;
-            if (!transactionGroups[txnId]) {
-                transactionGroups[txnId] = [];
-            }
-            transactionGroups[txnId].push(purchase);
-        });
-
-        const cartOrders = Object.values(transactionGroups).filter(group => group.length > 1).length;
-        const singleItems = Object.values(transactionGroups).filter(group => group.length === 1).length;
-
-        console.log(`Cart orders: ${cartOrders}, Single items: ${singleItems}`);
-        console.log('Sample purchase:', sortedPurchases[0]);
-
         res.json(sortedPurchases);
 
     } catch (error) {
-        console.error('Error reading purchases file:', error);
+        console.error('Error reading purchases:', error);
         res.status(500).send(`Internal Server Error: ${error.message}`);
     }
 });
 
-// ENHANCED: Get customer purchases with cart grouping
+// Get customer purchases
 app.get('/getCustomerPurchases', async (req, res) => {
     const { customerUsername } = req.query;
     if (!customerUsername) {
         return res.status(400).send('Missing customerUsername parameter');
     }
 
-    console.log(`Loading purchases for customer: ${customerUsername}`);
-
     try {
-        // Check if purchases.txt exists
-        try {
-            await fs.access('./db/purchases.txt');
-        } catch (error) {
-            console.log('purchases.txt does not exist, returning empty array');
-            return res.json([]);
-        }
-
         const data = await fs.readFile('./db/purchases.txt', 'utf8');
         const lines = data.split('\n');
-
-        // Skip header line and filter empty lines
         const dataLines = lines.slice(1).filter(line => line.trim());
-
         const customerPurchases = [];
 
-        for (let i = 0; i < dataLines.length; i++) {
-            const line = dataLines[i].trim();
-            if (!line) continue;
-
+        for (const line of dataLines) {
             try {
                 const parts = line.split('|');
-
-                if (parts.length !== 10) {
-                    console.warn(`Line ${i + 1} has incorrect number of parts, skipping`);
-                    continue;
-                }
+                if (parts.length !== 10) continue;
 
                 const [timestamp, customerUsernameFromFile, storeUsername, itemName, quantity, unitPrice, totalAmount, customerEmail, storeName, transactionId] = parts;
 
-                // Check if this purchase belongs to the requested customer
                 if (customerUsernameFromFile.trim() === customerUsername) {
                     customerPurchases.push({
                         timestamp: timestamp.trim(),
@@ -1275,51 +858,44 @@ app.get('/getCustomerPurchases', async (req, res) => {
                     });
                 }
             } catch (parseError) {
-                console.error(`Error parsing line ${i + 1}:`, parseError);
+                console.error('Error parsing purchase line:', parseError);
             }
         }
 
-        // Sort by timestamp (most recent first)
         const sortedPurchases = customerPurchases
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        console.log(`Returning ${sortedPurchases.length} purchases for customer ${customerUsername}`);
         res.json(sortedPurchases);
 
     } catch (error) {
-        console.error('Error reading purchases file:', error);
+        console.error('Error reading purchases:', error);
         res.status(500).send(`Internal Server Error: ${error.message}`);
     }
 });
 
-// FIXED: Process purchase with better validation and logging
+// Process single item purchase
 app.post('/processPurchase', async (req, res) => {
     const { customerUsername, storeUsername, itemId, quantity, customerEmail } = req.body;
 
-    console.log('Processing purchase:', { customerUsername, storeUsername, itemId, quantity, customerEmail });
+    console.log('🛍️ Processing single purchase:', { customerUsername, storeUsername, itemId, quantity });
 
     if (!customerUsername || !storeUsername || !itemId || !quantity) {
         return res.status(400).send('Missing required fields');
     }
 
     try {
-        // Get item details from Firebase
+        // Get item details
         const stockRef = collection(db, 'sfhs-code', 'stock', storeUsername);
         const itemDoc = await getDocs(query(stockRef, where('__name__', '==', itemId)));
 
         if (itemDoc.empty) {
-            console.error('Item not found:', itemId);
             return res.status(404).send('Item not found');
         }
 
         const itemData = itemDoc.docs[0].data();
         const requestedQuantity = parseInt(quantity);
 
-        console.log('Item data:', itemData);
-        console.log('Requested quantity:', requestedQuantity);
-
         if (itemData.quantity < requestedQuantity) {
-            console.error('Insufficient stock:', { available: itemData.quantity, requested: requestedQuantity });
             return res.status(400).send('Insufficient stock');
         }
 
@@ -1330,46 +906,26 @@ app.post('/processPurchase', async (req, res) => {
         const storeData = storeSnapshot.docs[0]?.data();
         const storeName = storeData?.storeName || 'Unknown Store';
 
-        // Calculate prices
+        // Calculate totals
         const unitPrice = parseFloat(itemData.price);
         const totalAmount = unitPrice * requestedQuantity;
         const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        console.log('Purchase details:', {
-            itemName: itemData.name,
-            unitPrice,
-            totalAmount,
-            transactionId,
-            storeName
-        });
-
-        // Create purchase record - EXACT format to match your example
+        // Create purchase record
         const purchaseRecord = `${new Date().toISOString()}|${customerUsername}|${storeUsername}|${itemData.name}|${requestedQuantity}|${unitPrice}|${totalAmount}|${customerEmail || 'N/A'}|${storeName}|${transactionId}\n`;
 
-        console.log('Writing purchase record:', purchaseRecord);
-
-        // Ensure directory exists
-        try {
-            await fs.access('./db');
-        } catch (error) {
-            await fs.mkdir('./db', { recursive: true });
-        }
-
-        // Write to purchases.txt
+        // Write purchase record
         await fs.appendFile('./db/purchases.txt', purchaseRecord);
-        console.log('Purchase record written successfully');
 
-        // Update stock in Firebase
+        // Update stock
         const newQuantity = itemData.quantity - requestedQuantity;
         if (newQuantity <= 0) {
             await deleteDoc(doc(db, 'sfhs-code', 'stock', storeUsername, itemDoc.docs[0].id));
-            console.log('Item removed from stock (quantity became 0)');
         } else {
             await updateDoc(doc(db, 'sfhs-code', 'stock', storeUsername, itemDoc.docs[0].id), {
                 quantity: newQuantity,
                 updatedDate: new Date().toISOString()
             });
-            console.log(`Stock updated: ${itemData.quantity} -> ${newQuantity}`);
         }
 
         const response = {
@@ -1381,16 +937,15 @@ app.post('/processPurchase', async (req, res) => {
             quantity: requestedQuantity
         };
 
-        console.log('Sending response:', response);
         res.json(response);
 
     } catch (error) {
-        console.error('Error processing purchase:', error);
+        console.error('❌ Purchase error:', error);
         res.status(500).send(`Internal Server Error: ${error.message}`);
     }
 });
 
-// DEBUG ENDPOINT: Get raw purchases file content
+// Debug endpoint for purchases file
 app.get('/debugPurchases', async (req, res) => {
     try {
         const data = await fs.readFile('./db/purchases.txt', 'utf8');
@@ -1399,8 +954,9 @@ app.get('/debugPurchases', async (req, res) => {
         res.json({
             totalLines: lines.length,
             header: lines[0],
-            sampleLines: lines.slice(1, 6), // First 5 data lines
-            allLines: lines // Include all lines for complete debugging
+            sampleLines: lines.slice(1, 6),
+            fileSize: Buffer.byteLength(data, 'utf8'),
+            lastModified: (await fs.stat('./db/purchases.txt')).mtime
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
