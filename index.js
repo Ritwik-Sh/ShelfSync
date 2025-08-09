@@ -51,36 +51,162 @@ initializePurchasesFile().catch(console.error);
 async function getPlaceDetails(url) {
     // Check cache first
     if (storeCache.has(url)) {
+        console.log('Returning cached result for:', url);
         return storeCache.get(url);
     }
 
     let browser;
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+        // Render-specific Puppeteer configuration
+        const browserConfig = {
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--single-process',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding'
+            ]
+        };
+
+        // CRITICAL: Set the correct executable path for Render
+        if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+            console.log('Render environment detected');
+            // Try multiple potential Chrome locations on Render
+            const possiblePaths = [
+                '/opt/render/.cache/puppeteer/chrome/linux-139.0.7258.66/chrome-linux64/chrome',
+                '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
+                process.env.PUPPETEER_EXECUTABLE_PATH,
+                '/usr/bin/chromium-browser',
+                '/usr/bin/google-chrome-stable',
+                '/usr/bin/google-chrome'
+            ];
+
+            for (const path of possiblePaths) {
+                if (path) {
+                    try {
+                        // For glob patterns, try to resolve
+                        if (path.includes('*')) {
+                            const fs = require('fs');
+                            const glob = require('glob');
+                            const matches = glob.sync(path);
+                            if (matches.length > 0) {
+                                browserConfig.executablePath = matches[0];
+                                console.log('Using Chrome at:', matches[0]);
+                                break;
+                            }
+                        } else {
+                            // Check if file exists
+                            const fs = require('fs');
+                            if (fs.existsSync(path)) {
+                                browserConfig.executablePath = path;
+                                console.log('Using Chrome at:', path);
+                                break;
+                            }
+                        }
+                    } catch (error) {
+                        console.log(`Path ${path} not accessible:`, error.message);
+                        continue;
+                    }
+                }
+            }
+
+            if (!browserConfig.executablePath) {
+                console.log('No Chrome executable found, trying without explicit path');
+            }
+        }
+
+        console.log('Launching browser with config:', browserConfig);
+        browser = await puppeteer.launch(browserConfig);
 
         const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+        
+        // Set realistic browser properties
+        await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        await page.setViewport({ width: 1366, height: 768 });
 
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 10000 });
+        console.log('Navigating to:', url);
+        await page.goto(url, { 
+            waitUntil: "domcontentloaded", 
+            timeout: 15000 
+        });
 
-        // Simple wait instead of waitForTimeout
+        // Wait for dynamic content
         await new Promise(resolve => setTimeout(resolve, 3000));
 
+        console.log('Extracting data from page...');
+
         const data = await page.evaluate(() => {
-            const name = document.querySelector('h1.DUwDvf')?.innerText ||
-                document.querySelector('h1')?.innerText || "Unknown Store";
+            // Enhanced selectors for Google Maps
+            const nameSelectors = [
+                'h1.DUwDvf',
+                'h1[data-attrid="title"]', 
+                'h1.x3AX1-LfntMc-header-title-title',
+                '.qrShPb h1',
+                'h1',
+                '[data-attrid="title"]'
+            ];
+            
+            let name = "Unknown Store";
+            for (const selector of nameSelectors) {
+                const element = document.querySelector(selector);
+                if (element && element.innerText.trim()) {
+                    name = element.innerText.trim();
+                    break;
+                }
+            }
 
-            const address = document.querySelector('button[data-item-id="address"] div.Io6YTe')?.innerText ||
-                document.querySelector('.Io6YTe')?.innerText || "Address not available";
+            const addressSelectors = [
+                'button[data-item-id="address"] div.Io6YTe',
+                '.Io6YTe',
+                '[data-item-id="address"]',
+                '.rogA2c .Io6YTe',
+                'div.Io6YTe',
+                '.AeaXub .Io6YTe'
+            ];
+            
+            let address = "Address not available";
+            for (const selector of addressSelectors) {
+                const element = document.querySelector(selector);
+                if (element && element.innerText.trim()) {
+                    address = element.innerText.trim();
+                    break;
+                }
+            }
 
-            const rating = document.querySelector('div.F7nice span[aria-hidden="true"]')?.innerText ||
-                document.querySelector('.MW4etd')?.innerText || "N/A";
+            const ratingSelectors = [
+                'div.F7nice span[aria-hidden="true"]',
+                '.MW4etd',
+                'span.ceNzKf',
+                '.Aq14fc',
+                'div.fontDisplayLarge'
+            ];
+            
+            let rating = "N/A";
+            for (const selector of ratingSelectors) {
+                const element = document.querySelector(selector);
+                if (element && element.innerText.trim()) {
+                    const ratingText = element.innerText.trim();
+                    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
+                    if (ratingMatch) {
+                        rating = ratingMatch[1];
+                        break;
+                    }
+                }
+            }
 
             return { name, address, rating };
         });
+
+        console.log('Successfully extracted data:', data);
 
         // Cache the result
         storeCache.set(url, data);
@@ -88,18 +214,22 @@ async function getPlaceDetails(url) {
 
     } catch (error) {
         console.error(`Error scraping ${url}:`, error.message);
-        // Return fallback data instead of throwing
+        
+        // Enhanced fallback with better name extraction
         const fallbackData = {
-            name: "Store Name Not Available",
-            address: "Address not available",
+            name: extractStoreNameFromUrl(url),
+            address: "Address not available - please check Google Maps link",
             rating: "N/A"
         };
+        
+        console.log('Using fallback data:', fallbackData);
         storeCache.set(url, fallbackData);
         return fallbackData;
     } finally {
         if (browser) {
             try {
                 await browser.close();
+                console.log('Browser closed successfully');
             } catch (e) {
                 console.error('Error closing browser:', e.message);
             }

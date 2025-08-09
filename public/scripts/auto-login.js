@@ -140,14 +140,14 @@ class AutoLogin {
     cancelAutoLogin() {
         this.hideAutoLoginOverlay();
         this.clearUserCookies();
-        window.location.href = '/accounts/login/index.html';
+        window.location.href = '/accounts/login/';
     }
 
     // Redirect to appropriate dashboard
     redirectToDashboard(userType) {
         const dashboardUrl = userType === 'store' 
-            ? '/dashboards/store/index.html' 
-            : '/dashboards/customer/index.html';
+            ? '/dashboards/store/' 
+            : '/dashboards/customer/';
         console.log('Redirecting to dashboard:', dashboardUrl);
         window.location.href = dashboardUrl;
     }
@@ -215,7 +215,7 @@ class AutoLogin {
                 
                 this.showErrorMessage('Auto-login failed. Please login again.');
                 setTimeout(() => {
-                    window.location.href = '/accounts/login/index.html';
+                    window.location.href = '/accounts/login/';
                 }, 2000);
                 return false;
             }
@@ -226,7 +226,7 @@ class AutoLogin {
             // Network error, but don't clear cookies - might be temporary
             this.showErrorMessage('Network error during auto-login. Redirecting to login...');
             setTimeout(() => {
-                window.location.href = '/accounts/login/index.html';
+                window.location.href = '/accounts/login/';
             }, 2000);
             return false;
         }
@@ -308,7 +308,7 @@ class AutoLogin {
             if (!this.hasAllRequiredCookies()) {
                 // No auth, redirect to login
                 console.log('No auth on dashboard, redirecting to login');
-                window.location.href = '/accounts/login/index.html';
+                window.location.href = '/accounts/login/';
             } else if (!this.isOnCorrectDashboard()) {
                 // Wrong dashboard, attempt auto-login to validate and redirect
                 console.log('Wrong dashboard or need validation, attempting auto-login');
