@@ -1,0 +1,8 @@
+Made a Customer Dashboard (Where he can view all the stores, with google maps integration)
+Made a login & Register page
+Made a store public page
+
+
+To do-
+- Make a store dashboard (only the store manager/Account holder can access)
+- Use fs module for live orders

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShelfSync - Your Digital Marketplace Revolution</title>
+    <script src="https://kit.fontawesome.com/d63d2ac69c.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        text: '#e2deee',
+                        background: '#0b0914',
+                        primary: '#a595da',
+                        secondary: '#3d278a',
+                        accent: '#6746d6'
+                    },
+                    fontFamily: {
+                        'monoton': ['Monoton', 'cursive'],
+                        'inter': ['Inter', 'sans-serif']
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.8s ease-out',
+                        'fade-in': 'fadeIn 1s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' }
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 20px #6746d6' },
+                            '100%': { boxShadow: '0 0 40px #6746d6, 0 0 60px #a595da' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(100px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+
+<body class="bg-background text-text font-inter overflow-x-hidden">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-primary/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="font-monoton text-2xl">
+                    <span class="text-accent">Aura</span><span>Demand</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#features" class="hover:text-accent transition-colors duration-300">Features</a>
+                    <a href="#about" class="hover:text-accent transition-colors duration-300">About</a>
+                    <a href="#contact" class="hover:text-accent transition-colors duration-300">Contact</a>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/accounts/login"
+                        class="px-4 py-2 rounded-lg border border-primary hover:bg-primary/10 transition-all duration-300 flex items-center space-x-2">
+                        <i class="fas fa-user"></i>
+                        <span>Login</span>
+                    </a>
+                    <a href="/accounts/register"
+                        class="px-4 py-2 bg-accent hover:bg-accent/80 rounded-lg transition-all duration-300 flex items-center space-x-2 animate-glow">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Register</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center relative overflow-hidden pt-20">
+        <!-- Animated Background Elements -->
+        <div class="absolute inset-0">
+            <div class="absolute top-20 left-20 w-72 h-72 bg-accent/10 rounded-full blur-3xl animate-float"></div>
+            <div class="absolute bottom-20 right-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float"
+                style="animation-delay: -2s;"></div>
+            <div
+                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-pulse-slow">
+            </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto px-6 text-center relative z-10">
+            <h1 class="font-monoton text-6xl md:text-8xl lg:text-9xl mb-8 animate-slide-up">
+                <span class="text-accent">Aura</span><span>Demand</span>
+            </h1>
+
+            <p class="text-xl md:text-2xl mb-8 text-primary animate-fade-in max-w-3xl mx-auto"
+                style="animation-delay: 0.3s;">
+                Revolutionizing digital commerce and Empowering Local Vendors
+            </p>
+
+            <div class="space-y-4 md:space-y-0 md:space-x-6 md:flex md:justify-center animate-fade-in"
+                style="animation-delay: 0.6s;">
+                <a href="accounts/register/"
+                    class="w-full md:w-auto px-8 py-4 bg-accent hover:bg-accent/80 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105 animate-glow">
+                    <i class="fas fa-rocket mr-2"></i>Get Started
+                </a>
+                <button
+                    class="w-full md:w-auto px-8 py-4 border border-primary hover:bg-primary/10 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105">
+                    <i class="fas fa-play-circle mr-2"></i>Watch Demo
+                </button>
+            </div>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+            <i class="fas fa-chevron-down text-2xl text-primary"></i>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-gradient-to-b from-background to-secondary/5">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2
+                    class="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                    Why Choose ShelfSync?
+                </h2>
+                <p class="text-xl text-primary max-w-3xl mx-auto">
+                    Experience the future of digital commerce with our cutting-edge platform
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div
+                    class="feature-card bg-secondary/10 p-8 rounded-2xl backdrop-blur-sm border border-primary/20 hover:border-accent/50 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2">
+                    <div class="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-brain text-2xl text-accent"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-4">AI-Powered Insights</h3>
+                    <p class="text-primary">Leverage advanced machine learning to understand market trends and optimize
+                        your business strategy.</p>
+                </div>
+
+                <div class="feature-card bg-secondary/10 p-8 rounded-2xl backdrop-blur-sm border border-primary/20 hover:border-accent/50 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2"
+                    style="animation-delay: 0.1s;">
+                    <div class="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-shield-alt text-2xl text-accent"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-4">Secure Transactions</h3>
+                    <p class="text-primary">Bank-grade security ensures your data and transactions are always protected
+                        with end-to-end encryption.</p>
+                </div>
+
+                <div class="feature-card bg-secondary/10 p-8 rounded-2xl backdrop-blur-sm border border-primary/20 hover:border-accent/50 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2"
+                    style="animation-delay: 0.2s;">
+                    <div class="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-rocket text-2xl text-accent"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-4">Lightning Fast</h3>
+                    <p class="text-primary">Experience blazing-fast load times and seamless interactions powered by
+                        cutting-edge technology.</p>
+                </div>
+
+                <div class="feature-card bg-secondary/10 p-8 rounded-2xl backdrop-blur-sm border border-primary/20 hover:border-accent/50 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2"
+                    style="animation-delay: 0.3s;">
+                    <div class="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-mobile-alt text-2xl text-accent"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-4">Mobile First</h3>
+                    <p class="text-primary">Optimized for all devices with a responsive design that looks perfect on any
+                        screen size.</p>
+                </div>
+
+                <div class="feature-card bg-secondary/10 p-8 rounded-2xl backdrop-blur-sm border border-primary/20 hover:border-accent/50 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2"
+                    style="animation-delay: 0.4s;">
+                    <div class="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-chart-line text-2xl text-accent"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-4">Advanced Analytics</h3>
+                    <p class="text-primary">Get detailed insights into your performance with comprehensive analytics and
+                        reporting tools.</p>
+                </div>
+
+                <div class="feature-card bg-secondary/10 p-8 rounded-2xl backdrop-blur-sm border border-primary/20 hover:border-accent/50 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2"
+                    style="animation-delay: 0.5s;">
+                    <div class="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-users text-2xl text-accent"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-4">Community Driven</h3>
+                    <p class="text-primary">Join a thriving community of buyers and sellers who are reshaping the
+                        digital marketplace.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-gradient-to-r from-secondary/20 to-accent/20">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <h2 class="text-4xl md:text-6xl font-bold mb-6">
+                Ready to Transform Your Business?
+            </h2>
+            <p class="text-xl text-primary mb-8 max-w-2xl mx-auto">
+                Join thousands of entrepreneurs who are already experiencing the ShelfSync difference
+            </p>
+            <div class="space-y-4 md:space-y-0 md:space-x-6 md:flex md:justify-center">
+                <a href="/accounts/register"
+                    class="inline-block w-full md:w-auto px-10 py-4 bg-accent hover:bg-accent/80 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105 animate-glow">
+                    <i class="fas fa-user-plus mr-2"></i>Start Your Journey
+                </a>
+                <a href="mailto:ritwiksharma2010@outlook.com"
+                    class="w-full md:w-auto px-10 py-4 border border-primary hover:bg-primary/10 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105">
+                    <i class="fas fa-phone mr-2"></i>Contact Support
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-primary/20">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-2">
+                    <div class="font-monoton text-3xl mb-4">
+                        <span class="text-accent">Aura</span><span>Demand</span>
+                    </div>
+                    <p class="text-primary mb-6">
+                        Revolutionizing digital commerce with AI-powered insights and seamless user experiences.
+                    </p>
+                    <div>
+                        <a href="#"
+                            class="inline-flex items-center space-x-2 text-primary hover:text-accent transition-colors duration-300">
+                            <i class="fab fa-github text-xl"></i>
+                            <span>View on GitHub</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                </div>
+
+                <div class="border-t border-primary/20 mt-12 pt-8 text-center text-primary">
+                    <p>ShelfSync</p>
+                </div>
+            </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-slide-up');
+                }
+            });
+        }, observerOptions);
+
+        // Observe feature cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // Animated counters
+        function animateCounter(element, start, end, duration) {
+            let startTime = null;
+
+            function animation(currentTime) {
+                if (startTime === null) startTime = currentTime;
+                const timeElapsed = currentTime - startTime;
+                const run = Math.min(timeElapsed / duration, 1);
+
+                element.textContent = Math.floor(run * (end - start) + start).toLocaleString() + '+';
+
+                if (run < 1) {
+                    requestAnimationFrame(animation);
+                }
+            }
+
+            requestAnimationFrame(animation);
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Parallax effect for background elements
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const rate = scrolled * -0.5;
+
+            document.querySelectorAll('.absolute').forEach((element, index) => {
+                if (element.querySelector('.blur-3xl')) {
+                    element.style.transform = `translateY(${rate * (index + 1) * 0.1}px)`;
+                }
+            });
+        });
+
+        // Add loading animation
+        window.addEventListener('load', () => {
+            document.body.classList.add('loaded');
+        });
+    </script>
+
+    <style>
+        .loaded {
+            opacity: 1;
+        }
+
+        body {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .bg-clip-text {
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .backdrop-blur-md {
+            backdrop-filter: blur(12px);
+        }
+
+        .backdrop-blur-sm {
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</body>
+
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Dashboard - ShelfSync</title>
+    <link rel="shortcut icon" href="../../logo.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Monoton" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/d63d2ac69c.js" crossorigin="anonymous"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        text: '#e2deee',
+                        background: '#0b0914',
+                        primary: '#a595da',
+                        secondary: '#3d278a',
+                        accent: '#6746d6'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-text min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-secondary/30 to-accent/20 backdrop-blur-sm border-b border-primary/20 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <div class="w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-store text-white text-sm"></i>
+                        </div>
+                        <h1 style="font-family: 'Monoton';" class="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            ShelfSync
+                        </h1>
+                    </div>
+                </div>
+
+                <!-- User Info and Actions -->
+                <div class="flex items-center space-x-4">
+                    <div class="text-sm">
+                        <span class="text-text/70">Store |</span>
+                        <span class="text-primary font-medium" id="usernameDisplay">Loading...</span>
+                    </div>
+                    <button 
+                        onclick="logout()" 
+                        class="bg-gradient-to-r from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-all duration-200 flex items-center"
+                    >
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Left Sidebar - Inventory Management -->
+            <div class="lg:col-span-1">
+                <div class="bg-gradient-to-br from-secondary/20 to-accent/10 backdrop-blur-sm border border-primary/20 rounded-xl p-6 sticky top-24">
+                    <h3 class="text-lg font-semibold text-text mb-6 flex items-center">
+                        <i class="fas fa-boxes mr-2 text-primary"></i>Inventory
+                    </h3>
+                    
+                    <!-- Action Buttons -->
+                    <div class="space-y-3 mb-6">
+                        <button 
+                            onclick="openAddStockModal()"
+                            class="w-full bg-gradient-to-r from-green-500/20 to-green-600/10 hover:from-green-500/30 hover:to-green-600/20 border border-green-500/30 text-green-400 px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-center font-medium"
+                        >
+                            <i class="fas fa-plus mr-2"></i>ADD STOCK
+                        </button>
+                        
+                        <button 
+                            onclick="openRemoveStockModal()"
+                            class="w-full bg-gradient-to-r from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg transition-all duration-200 flex items-center justify-center font-medium"
+                        >
+                            <i class="fas fa-minus mr-2"></i>REMOVE STOCK
+                        </button>
+                    </div>
+                    
+                    <!-- Current Stock Items -->
+                    <div id="stockItems">
+                        <h4 class="text-md font-medium text-text mb-4">Current Stock</h4>
+                        <div id="stockList" class="space-y-3">
+                            <!-- Stock items will be loaded here -->
+                        </div>
+                        <div id="noStock" class="text-center py-6 text-text/50 hidden">
+                            <i class="fas fa-box-open text-2xl mb-2"></i>
+                            <p class="text-sm">No items in stock</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content - Customer Orders -->
+            <div class="lg:col-span-2">
+                <div class="bg-gradient-to-br from-secondary/20 to-accent/10 backdrop-blur-sm border border-primary/20 rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-semibold text-text flex items-center">
+                            <i class="fas fa-shopping-cart mr-2 text-primary"></i>Customer Orders
+                        </h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2 text-sm text-text/70">
+                                <span>Total Revenue:</span>
+                                <span id="totalAmount" class="text-accent font-semibold text-lg">₹0</span>
+                            </div>
+                            <button onclick="refreshData()" class="p-2 bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary rounded-lg transition-all duration-200">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Orders Container -->
+                    <div id="purchasesContainer" class="space-y-4 max-h-[600px] overflow-y-auto">
+                        <!-- Customer orders will be loaded here -->
+                    </div>
+                    
+                    <div id="noPurchases" class="text-center py-12 hidden">
+                        <i class="fas fa-receipt text-4xl text-primary/50 mb-4"></i>
+                        <h4 class="text-lg font-medium text-text mb-2">No orders yet</h4>
+                        <p class="text-text/70">Customer orders will appear here</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar - Stock Overview -->
+            <div class="lg:col-span-1">
+                <div class="bg-gradient-to-br from-secondary/20 to-accent/10 backdrop-blur-sm border border-primary/20 rounded-xl p-6 sticky top-24">
+                    <h3 class="text-lg font-semibold text-text mb-6 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-primary"></i>Stock Overview
+                    </h3>
+                    
+                    <div id="stockOverview" class="space-y-4">
+                        <!-- Stock overview items will be loaded here -->
+                    </div>
+                    
+                    <div id="noStockOverview" class="text-center py-6 text-text/50 hidden">
+                        <i class="fas fa-chart-line text-2xl mb-2"></i>
+                        <p class="text-sm">Add items to see overview</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Stock Modal -->
+    <div id="addStockModal" class="fixed inset-0 bg-background/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-gradient-to-br from-secondary/40 to-accent/20 border border-primary/20 rounded-2xl p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-text">Add Stock Item</h3>
+                <button onclick="closeAddStockModal()" class="text-text/50 hover:text-primary">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="addStockForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-text mb-2">Item Name</label>
+                    <input type="text" id="itemName" required 
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50"
+                        placeholder="Enter item name"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-text mb-2">Quantity</label>
+                    <input 
+                        type="number" 
+                        id="itemQuantity" 
+                        min="1" 
+                        required 
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50"
+                        placeholder="Enter quantity"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-text mb-2">Price (₹)</label>
+                    <input 
+                        type="number" 
+                        id="itemPrice" 
+                        min="0" 
+                        step="0.01" 
+                        required 
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50"
+                        placeholder="Enter price"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-text mb-2">Image URL (Optional)</label>
+                    <input 
+                        type="url" 
+                        id="itemImage" 
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50"
+                        placeholder="Enter image URL"
+                    >
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                    >
+                        <i class="fas fa-plus mr-2"></i>Add Item
+                    </button>
+                    <button 
+                        type="button" 
+                        onclick="closeAddStockModal()" 
+                        class="px-6 bg-background/50 hover:bg-background/70 border border-primary/30 text-primary rounded-lg transition-all duration-200"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Remove Stock Modal -->
+    <div id="removeStockModal" class="fixed inset-0 bg-background/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-gradient-to-br from-secondary/40 to-accent/20 border border-primary/20 rounded-2xl p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-text">Remove Stock</h3>
+                <button onclick="closeRemoveStockModal()" class="text-text/50 hover:text-primary">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="removeStockForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-text mb-2">Select Item</label>
+                    <select 
+                        id="selectItemToRemove" 
+                        required 
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text"
+                    >
+                        <option value="">Choose an item to remove</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-text mb-2">Quantity to Remove</label>
+                    <input 
+                        type="number" 
+                        id="removeQuantity" 
+                        min="1" 
+                        required 
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50"
+                        placeholder="Enter quantity to remove"
+                    >
+                    <p class="text-text/50 text-sm mt-1">Available: <span id="availableQuantity">0</span></p>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-gradient-to-r from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 text-red-400 font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                    >
+                        <i class="fas fa-minus mr-2"></i>Remove Item
+                    </button>
+                    <button 
+                        type="button" 
+                        onclick="closeRemoveStockModal()" 
+                        class="px-6 bg-background/50 hover:bg-background/70 border border-primary/30 text-primary rounded-lg transition-all duration-200"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer" class="fixed top-4 right-4 z-50"></div>
+
+    <script src="../../scripts/auto-login.js"></script>
+    <script src="store-dashboard.js"></script>
+</body>
+</html>

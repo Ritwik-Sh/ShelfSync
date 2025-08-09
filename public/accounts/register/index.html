@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShelfSync | Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="shortcut icon" href="../../logo.png" type="image/x-icon">
+    <script src="https://kit.fontawesome.com/d63d2ac69c.js" crossorigin="anonymous"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        text: '#e2deee',
+                        background: '#0b0914',
+                        primary: '#a595da',
+                        secondary: '#3d278a',
+                        accent: '#6746d6'
+                    },
+                    fontFamily: {
+                        'monoton': ['Monoton', 'cursive'],
+                        'inter': ['Inter', 'sans-serif']
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.8s ease-out',
+                        'fade-in': 'fadeIn 1s ease-out',
+                        'fade-out': 'fadeOut 1s ease-in',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fly-in': 'flyIn 0.8s ease-out'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' }
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 20px #6746d6' },
+                            '100%': { boxShadow: '0 0 40px #6746d6, 0 0 60px #a595da' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(100px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        fadeOut: {
+                            '0%': { opacity: '1' },
+                            '100%': { opacity: '0' }
+                        },
+                        flyIn: {
+                            '0%': { transform: 'translateY(-6rem)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+
+<body class="bg-background text-text min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-lg transition-all duration-30 animate-glow rounded-2xl">
+        <div
+            class="bg-gradient-to-br from-secondary/20 to-accent/10 backdrop-blur-sm border border-primary/20 rounded-2xl shadow-2xl p-8">
+            <!-- Logo/Header -->
+            <div class="text-center mb-8">
+                <div
+                    class="transition-all duration-30 animate-glow rounded-2xl inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-full mb-4">
+                    <i class="fas fa-user-plus text-2xl text-white"></i>
+                </div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    Create Account
+                </h1>
+                <p class="text-text/70 mt-2">Choose your registration type</p>
+            </div>
+
+            <!-- Registration Type Selection -->
+            <div class="mb-6">
+                <div class="flex gap-4 mb-6">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="registrationType" value="customer" checked
+                            class="sr-only registration-type">
+                        <div
+                            class="registration-option border-2 border-primary/30 rounded-xl p-4 text-center transition-all duration-300 hover:border-accent/50 hover:bg-accent/5">
+                            <i class="fas fa-user text-3xl mb-3 text-primary"></i>
+                            <h3 class="font-semibold text-text mb-1">Customer</h3>
+                            <p class="text-text/60 text-sm">Shop and discover stores</p>
+                        </div>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="registrationType" value="store" class="sr-only registration-type">
+                        <div
+                            class="registration-option border-2 border-primary/30 rounded-xl p-4 text-center transition-all duration-300 hover:border-accent/50 hover:bg-accent/5">
+                            <i class="fas fa-store text-3xl mb-3 text-primary"></i>
+                            <h3 class="font-semibold text-text mb-1">Store</h3>
+                            <p class="text-text/60 text-sm">Register your business</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Customer Registration Form -->
+            <form id="customerForm" class="registration-form space-y-4">
+                <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                </div> -->
+
+                <div class="space-y-2 animate-fly-in duration-100">
+                    <label for="customerFullName" class="block text-sm font-medium text-text">
+                        <i class="fas fa-id-card mr-2 text-primary"></i>Full Name
+                    </label>
+                    <input type="text" id="customerFullName" name="fullName" required
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                        placeholder="John Doe">
+                </div>
+
+                <div class="space-y-2 animate-fly-in duration-100 delay-100">
+                    <label for="customerUsername" class="block text-sm font-medium text-text">
+                        <i class="fas fa-user mr-2 text-primary"></i>Username
+                    </label>
+                    <input type="text" id="customerUsername" name="userName" required
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                        placeholder="JustAnything">
+                </div>
+
+                <div class="space-y-2  animate-fly-in duration-100 delay-200">
+                    <label for="customerEmail" class="block text-sm font-medium text-text">
+                        <i class="fas fa-envelope mr-2 text-primary"></i>Email
+                    </label>
+                    <input type="email" id="customerEmail" name="email" required
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                        placeholder="example@example.com">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="customerPassword" class="block text-sm font-medium text-text">
+                        <i class="fas fa-lock mr-2 text-primary"></i>Password
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="customerPassword" name="password" required
+                            class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                            placeholder="Create a strong password">
+                        <button type="button"
+                            class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-text/50 hover:text-primary transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full animate-glow bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-accent/50">
+                    <i class="fas fa-user-plus mr-2"></i>Create Customer Account
+                </button>
+            </form>
+
+            <!-- Store Registration Form -->
+            <form id="storeForm" class="registration-form space-y-4 hidden">
+                <div class="space-y-2">
+                    <label for="storeUrl" class="block text-sm font-medium text-text">
+                        <i class="fas fa-link mr-2 text-primary"></i>Username
+                    </label>
+                    <input type="text" id="storeUsername" name="username" required
+                        class="text-center w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                        placeholder="Create a unique username for your store">
+                </div>
+                <div class="space-y-2">
+                    <label for="storeUrl" class="block text-sm font-medium text-text">
+                        <i class="fas fa-link mr-2 text-primary"></i>Password
+                    </label>
+                    <input type="password" id="storePassword" name="password" required
+                        class="text-center w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                        placeholder="Create a secure password for your store">
+                </div>
+                <div class="space-y-2">
+                    <label for="storeUrl" class="block text-sm font-medium text-text">
+                        <i class="fas fa-link mr-2 text-primary"></i>Google Maps URL
+                    </label>
+                    <input type="url" id="storeUrl" name="url" required
+                        class="w-full px-4 py-3 bg-background/50 border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-text placeholder-text/50 transition-all duration-200"
+                        placeholder="https://google.com/maps/place/...">
+                    <p class="text-text/50 text-xs mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Paste your Google Maps business URL. We'll automatically extract your store details.
+                    </p>
+                </div>
+
+                <div id="storePreview" class="hidden bg-background/30 border border-primary/20 rounded-lg p-4">
+                    <h4 class="font-semibold text-text mb-3 flex items-center">
+                        <i class="fas fa-eye mr-2 text-accent"></i>Store Preview
+                    </h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center">
+                            <i class="fas fa-store mr-2 text-primary w-4"></i>
+                            <span class="text-text/70">Name:</span>
+                            <span id="previewName" class="ml-2 text-text">Loading...</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-map-marker-alt mr-2 text-primary w-4"></i>
+                            <span class="text-text/70">Address:</span>
+                            <span id="previewAddress" class="ml-2 text-text">Loading...</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-star mr-2 text-primary w-4"></i>
+                            <span class="text-text/70">Rating:</span>
+                            <span id="previewRating" class="ml-2 text-text">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full animate-glow bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-accent/50">
+                    <i class="fas fa-store mr-2"></i>Register Store
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="my-6 flex items-center">
+                <div class="flex-1 border-t border-primary/20"></div>
+                <span class="px-4 text-text/50 text-sm">Already have an account?</span>
+                <div class="flex-1 border-t border-primary/20"></div>
+            </div>
+
+            <!-- Login Link -->
+            <a href="../login/"
+                class="block w-full text-center py-3 px-4 border border-primary/30 text-primary hover:text-accent hover:border-accent/50 rounded-lg transition-all duration-200 hover:bg-primary/5">
+                <i class="fas fa-sign-in-alt mr-2"></i>Back to Login
+            </a>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay"
+            class="fixed inset-0 bg-background/80 backdrop-blur-sm hidden items-center justify-center z-50">
+            <div
+                class="bg-gradient-to-br from-secondary/40 to-accent/20 p-8 rounded-2xl border border-primary/20 text-center">
+                <div class="animate-spin w-8 h-8 border-4 border-primary/30 border-t-accent rounded-full mx-auto mb-4">
+                </div>
+                <p class="text-text" id="loadingText">Processing registration...</p>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertContainer" class="fixed top-4 right-4 z-50"></div>
+    </div>
+
+    <script src="auto-login.js"></script>
+    <script src="register.js"></script>
+</body>
+
+</html>
