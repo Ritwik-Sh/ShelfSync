@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "build": "npm install && npx playwright install"
+    "build": "npm install && npx install playwright"
   },
   "keywords": [],
   "author": "",
